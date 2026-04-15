@@ -173,7 +173,7 @@
         document.getElementById('loader').style.display = "none";
     }
 
-    async function chargerDonnees() {
+async function chargerDonnees() {
         document.getElementById('loader').style.display = "block";
         try {
             const res = await fetch(SCRIPT_URL);
@@ -182,12 +182,21 @@
             const bS = document.getElementById('bSortie');
             bE.innerHTML = ""; bS.innerHTML = "";
             
-            // On filtre sur la date affichée dans le formulaire
-            const dateFiltre = document.getElementById('e_date').value;
-
+            // On récupère la date du calendrier de l'appli
+            let dateFiltre = document.getElementById('e_date').value; 
+            
+            // ASTUCE : Si la date du Sheets est au format DD/MM/YYYY, on la convertit
             data.forEach((l, index) => {
                 if(index === 0) return; 
-                if (l[0] !== dateFiltre) return;
+                
+                let dateLigne = l[0];
+                // Si le Sheets renvoie 15/04/2026, on transforme en 2026-04-15 pour comparer
+                if(dateLigne.includes('/')) {
+                    const parts = dateLigne.split('/');
+                    dateLigne = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                }
+
+                if (dateLigne !== dateFiltre) return;
 
                 const ligneJS = JSON.stringify(l).replace(/"/g, '&quot;');
                 const rowE = `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[3]}</td><td>${l[4]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="edit-btn" onclick="editer(${ligneJS})">✎</button><button class="del-btn" onclick="supprimer(${ligneJS})">🗑</button></td></tr>`;
@@ -196,10 +205,10 @@
                 if(l[1] === 'Entrée') bE.innerHTML += rowE; else bS.innerHTML += rowS;
             });
             
-            if(bE.innerHTML === "") bE.innerHTML = "<tr><td colspan='9' class='empty-msg'>Rien aujourd'hui</td></tr>";
-            if(bS.innerHTML === "") bS.innerHTML = "<tr><td colspan='9' class='empty-msg'>Rien aujourd'hui</td></tr>";
+            if(bE.innerHTML === "") bE.innerHTML = "<tr><td colspan='9' class='empty-msg'>Aucune entrée pour cette date</td></tr>";
+            if(bS.innerHTML === "") bS.innerHTML = "<tr><td colspan='9' class='empty-msg'>Aucune sortie pour cette date</td></tr>";
 
-        } catch (e) { console.log("Erreur chargement."); }
+        } catch (e) { console.log("Erreur de format de date."); }
         document.getElementById('loader').style.display = "none";
     }
 </script>
