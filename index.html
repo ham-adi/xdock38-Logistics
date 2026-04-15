@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logistix Pro V9.1 - Fix Date</title>
+    <title>Logistix Pro Sync - Version Stable</title>
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2343/2343894.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     
     <style>
         :root { --primary: #2c3e50; --entry: #27ae60; --exit: #2980b9; --delete: #e74c3c; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; margin: 0; padding: 10px; font-size: 13px; }
+        body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 10px; font-size: 13px; }
         .card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 1px solid #ddd; }
         h2 { margin: 0 0 10px 0; font-size: 1.1rem; text-transform: uppercase; }
         .field { margin-bottom: 8px; }
@@ -19,20 +19,19 @@
         .btn { width: 100%; padding: 14px; border: none; border-radius: 6px; color: white; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top:5px;}
         .btn-e { background: var(--entry); }
         .btn-s { background: var(--exit); }
-        .sync-status { text-align: center; font-size: 0.8rem; color: #e67e22; height: 20px; font-weight: bold; margin-bottom: 5px; }
+        .sync-status { text-align: center; font-size: 0.7rem; color: #e67e22; height: 15px; margin-bottom: 5px; font-weight: bold; }
         .histo-container { overflow-x: auto; max-height: 400px; }
         table { width: 100%; border-collapse: collapse; background: white; font-size: 0.75rem; min-width: 800px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
         th { background: #f8f9fa; position: sticky; top: 0; }
         .action-btns { display: flex; gap: 5px; }
-        .edit-btn { background: #f39c12; color: white; border: none; padding: 8px; border-radius: 4px; font-weight: bold; cursor: pointer; }
-        .del-btn { background: var(--delete); color: white; border: none; padding: 8px; border-radius: 4px; font-weight: bold; cursor: pointer; }
-        .empty-msg { text-align: center; padding: 20px; color: #999; font-style: italic; }
+        .edit-btn { background: #f39c12; color: white; border: none; padding: 8px; border-radius: 4px; font-weight: bold; cursor: pointer;}
+        .del-btn { background: var(--delete); color: white; border: none; padding: 8px; border-radius: 4px; font-weight: bold; cursor: pointer;}
     </style>
 </head>
 <body>
 
-<div id="loader" class="sync-status" style="display:none;">🔄 SYNCHRONISATION...</div>
+<div id="loader" class="sync-status" style="display:none;">SYNCHRONISATION...</div>
 
 <div class="card" id="form-entree" style="border-top: 6px solid var(--entry);">
     <h2 style="color: var(--entry);">📥 Entrée</h2>
@@ -66,18 +65,17 @@
 
 <div class="card">
     <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom:10px;">
-        <h3 style="margin:0; font-size:0.9rem;">FLUX DU JOUR</h3>
-        <button onclick="chargerDonnees()" style="padding: 8px 12px; border-radius: 5px; background: #eee; border: 1px solid #ccc; cursor: pointer;">Actualiser ↻</button>
+        <h3 style="margin:0; font-size:0.9rem;">FLUX PARTAGÉ (HISTORIQUE)</h3>
+        <button onclick="chargerDonnees()">Actualiser ↻</button>
     </div>
     <div class="histo-container">
         <h4 style="color:var(--entry); margin:5px 0;">ENTRÉES</h4>
-        <table>
+        <table id="tEntree">
             <thead><tr><th>Date</th><th>Navette</th><th>Expéditeur</th><th>Destinataire</th><th>Pal.</th><th>Col.</th><th>M.</th><th>Com.</th><th>Actions</th></tr></thead>
             <tbody id="bEntree"></tbody>
         </table>
-        
         <h4 style="color:var(--exit); margin:15px 0 5px 0;">SORTIES</h4>
-        <table>
+        <table id="tSortie">
             <thead><tr><th>Date</th><th>Navette</th><th>Destinataire</th><th>Expéditeur</th><th>Pal.</th><th>Col.</th><th>M.</th><th>Com.</th><th>Actions</th></tr></thead>
             <tbody id="bSortie"></tbody>
         </table>
@@ -111,7 +109,8 @@
     async function sauver(type) {
         const p = type === 'Entrée' ? 'e' : 's';
         const data = {
-            type: type, date: document.getElementById(p+'_date').value,
+            type: type, 
+            date: document.getElementById(p+'_date').value,
             nav: document.getElementById(p+'_navette').value.toUpperCase(),
             exp: document.getElementById(p+'_exp').value.toUpperCase(),
             dest: document.getElementById(p+'_dest').value.toUpperCase(),
@@ -123,14 +122,45 @@
         if(!data.nav) return alert("Navette requise");
         document.getElementById('loader').style.display = "block";
         await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
-        
-        // Reset partiel
         document.getElementById(p+'_navette').value = "";
         document.getElementById(p+'_com').value = "";
         document.getElementById(p+'_pal').selectedIndex = 0;
         document.getElementById(p+'_colis').selectedIndex = 0;
         document.getElementById(p+'_m').selectedIndex = 0;
-        
+        chargerDonnees();
+        document.getElementById('loader').style.display = "none";
+    }
+
+    async function editer(ligne) {
+        if(!confirm("CORRECTION : La ligne sera supprimée pour être modifiée. Continuer ?")) return;
+        document.getElementById('loader').style.display = "block";
+        const data = { action: "DELETE", id: ligne[9] };
+        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
+        const type = ligne[1];
+        const p = type === 'Entrée' ? 'e' : 's';
+        document.getElementById(type === 'Entrée' ? 'form-entree' : 'form-sortie').scrollIntoView({behavior: "smooth"});
+        document.getElementById(p+'_date').value = ligne[0];
+        document.getElementById(p+'_navette').value = ligne[2];
+        if(type === 'Entrée') {
+            document.getElementById('e_exp').value = ligne[3];
+            document.getElementById('e_dest').value = ligne[4];
+        } else {
+            document.getElementById('s_dest').value = ligne[4]; 
+            document.getElementById('s_exp').value = ligne[3];  
+        }
+        document.getElementById(p+'_pal').value = ligne[5];
+        document.getElementById(p+'_colis').value = ligne[6];
+        document.getElementById(p+'_m').value = ligne[7];
+        document.getElementById(p+'_com').value = ligne[8] || '';
+        chargerDonnees();
+        document.getElementById('loader').style.display = "none";
+    }
+
+    async function supprimer(ligne) {
+        if(!confirm("SUPPRIMER DÉFINITIVEMENT CETTE LIGNE ?")) return;
+        document.getElementById('loader').style.display = "block";
+        const data = { action: "DELETE", id: ligne[9] };
+        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
         chargerDonnees();
         document.getElementById('loader').style.display = "none";
     }
@@ -143,75 +173,14 @@
             const bE = document.getElementById('bEntree');
             const bS = document.getElementById('bSortie');
             bE.innerHTML = ""; bS.innerHTML = "";
-            
-            // Format Calendrier : 2026-04-15
-            const dateInput = document.getElementById('e_date').value; 
-            // Format Français : 15/04/2026
-            const [y, m, d] = dateInput.split('-');
-            const dateFr = `${d}/${m}/${y}`; 
-
             data.forEach((l, index) => {
-                if(index === 0 || !l[0]) return; 
-
-                // Comparaison flexible (International OU Français)
-                const dateLigne = l[0].toString();
-                const match = (dateLigne.includes(dateInput) || dateLigne.includes(dateFr));
-
-                if (!match) return;
-
+                if(index === 0) return; 
                 const ligneJS = JSON.stringify(l).replace(/"/g, '&quot;');
-                
-                // Entrée
                 const rowE = `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[3]}</td><td>${l[4]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="edit-btn" onclick="editer(${ligneJS})">✎</button><button class="del-btn" onclick="supprimer(${ligneJS})">🗑</button></td></tr>`;
-                
-                // Sortie (Inversion visuelle l[4]/l[3])
                 const rowS = `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[4]}</td><td>${l[3]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="edit-btn" onclick="editer(${ligneJS})">✎</button><button class="del-btn" onclick="supprimer(${ligneJS})">🗑</button></td></tr>`;
-                
                 if(l[1] === 'Entrée') bE.innerHTML += rowE; else bS.innerHTML += rowS;
             });
-            
-            if(bE.innerHTML === "") bE.innerHTML = "<tr><td colspan='9' class='empty-msg'>Rien aujourd'hui</td></tr>";
-            if(bS.innerHTML === "") bS.innerHTML = "<tr><td colspan='9' class='empty-msg'>Rien aujourd'hui</td></tr>";
-
-        } catch (e) { console.log("Erreur de chargement"); }
-        document.getElementById('loader').style.display = "none";
-    }
-
-    async function supprimer(ligne) {
-        if(!confirm("SUPPRIMER DÉFINITIVEMENT ?")) return;
-        document.getElementById('loader').style.display = "block";
-        const data = { action: "DELETE", id: ligne[9] };
-        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
-        chargerDonnees();
-        document.getElementById('loader').style.display = "none";
-    }
-
-    async function editer(ligne) {
-        if(!confirm("CORRIGER : La ligne sera supprimée pour être remplacée. Continuer ?")) return;
-        document.getElementById('loader').style.display = "block";
-        const data = { action: "DELETE", id: ligne[9] };
-        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
-        
-        const type = ligne[1];
-        const p = type === 'Entrée' ? 'e' : 's';
-        document.getElementById(type === 'Entrée' ? 'form-entree' : 'form-sortie').scrollIntoView({behavior: "smooth"});
-        document.getElementById(p+'_date').value = document.getElementById('e_date').value;
-        document.getElementById(p+'_navette').value = ligne[2];
-        
-        if(type === 'Entrée') {
-            document.getElementById('e_exp').value = ligne[3];
-            document.getElementById('e_dest').value = ligne[4];
-        } else {
-            document.getElementById('s_dest').value = ligne[4]; 
-            document.getElementById('s_exp').value = ligne[3];  
-        }
-        
-        document.getElementById(p+'_pal').value = ligne[5];
-        document.getElementById(p+'_colis').value = ligne[6];
-        document.getElementById(p+'_m').value = ligne[7];
-        document.getElementById(p+'_com').value = ligne[8] || '';
-        
-        chargerDonnees();
+        } catch (e) { console.log("Chargement initial terminé."); }
         document.getElementById('loader').style.display = "none";
     }
 </script>
