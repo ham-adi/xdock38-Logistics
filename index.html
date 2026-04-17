@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Logistix Pro V9.8 - Mémoire Navette</title>
-    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root { --primary: #2c3e50; --entry: #27ae60; --exit: #2980b9; --delete: #e74c3c; }
+        :root { --primary: #2c3e50; --entry: #27ae60; --exit: #2980b9; --delete: #e74c3c; --edit: #f39c12; }
         body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 10px; font-size: 13px; }
         .card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 1px solid #ddd; }
         h2 { margin: 0 0 10px 0; font-size: 1.1rem; text-transform: uppercase; }
@@ -16,14 +15,13 @@
         .btn { width: 100%; padding: 14px; border: none; border-radius: 6px; color: white; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top:5px;}
         .btn-e { background: var(--entry); }
         .btn-s { background: var(--exit); }
-        .btn-scan { background: #34495e; margin-bottom: 10px; font-size: 0.9rem; border: 2px solid #2c3e50; }
-        #reader { width: 100%; border-radius: 10px; overflow: hidden; display: none; margin-bottom: 10px; background: #000; min-height: 250px; }
         .sync-status { text-align: center; font-size: 0.7rem; color: #e67e22; height: 15px; margin-bottom: 5px; font-weight: bold; }
         .histo-container { overflow-x: auto; max-height: 400px; }
         table { width: 100%; border-collapse: collapse; background: white; font-size: 0.75rem; min-width: 800px; }
         th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
         th { background: #f8f9fa; position: sticky; top: 0; }
         .action-btns { display: flex; gap: 5px; }
+        .edit-btn { background: var(--edit); color: white; border: none; padding: 8px; border-radius: 4px; font-weight: bold; cursor: pointer;}
         .del-btn { background: var(--delete); color: white; border: none; padding: 8px; border-radius: 4px; font-weight: bold; cursor: pointer;}
     </style>
 </head>
@@ -31,13 +29,10 @@
 
 <div id="loader" class="sync-status" style="display:none;">SYNCHRONISATION...</div>
 
-<div id="reader"></div>
-<button class="btn btn-scan" id="btn-toggle-scan" onclick="toggleScanner()">📷 OUVRIR LA CAMERA</button>
-
 <div class="card" id="form-entree" style="border-top: 6px solid var(--entry);">
     <h2 style="color: var(--entry);">📥 Entrée</h2>
     <div class="field"><label>Date</label><input type="date" id="e_date"></div>
-    <div class="field"><label>Navette (Conservée)</label><input list="list_navettes" id="e_navette"></div>
+    <div class="field"><label>Navette</label><input list="list_navettes" id="e_navette"></div>
     <div class="field"><label>Expéditeur (Origine)</label><input list="list_sites" id="e_exp"></div>
     <div class="field"><label>Destinataire (Final)</label><input list="list_sites" id="e_dest"></div>
     <div style="display:flex; gap:8px;">
@@ -45,14 +40,14 @@
         <div style="flex:1"><label>Colis</label><select id="e_colis"></select></div>
         <div style="flex:1"><label>Métrage</label><select id="e_m"></select></div>
     </div>
-    <div class="field"><label>Commentaire / Scan</label><textarea id="e_com" rows="2" placeholder="Le scan apparaîtra ici..."></textarea></div>
+    <div class="field"><label>Commentaire</label><textarea id="e_com" rows="2"></textarea></div>
     <button class="btn btn-e" onclick="sauver('Entrée')">VALIDER ENTRÉE</button>
 </div>
 
 <div class="card" id="form-sortie" style="border-top: 6px solid var(--exit);">
     <h2 style="color: var(--exit);">📤 Sortie</h2>
     <div class="field"><label>Date</label><input type="date" id="s_date"></div>
-    <div class="field"><label>Navette (Conservée)</label><input list="list_navettes" id="s_navette"></div>
+    <div class="field"><label>Navette</label><input list="list_navettes" id="s_navette"></div>
     <div class="field"><label>Destinataire (Cible)</label><input list="list_sites" id="s_dest"></div>
     <div class="field"><label>Expéditeur (Origine)</label><input list="list_sites" id="s_exp"></div>
     <div style="display:flex; gap:8px;">
@@ -60,7 +55,7 @@
         <div style="flex:1"><label>Colis</label><select id="s_colis"></select></div>
         <div style="flex:1"><label>Métrage</label><select id="s_m"></select></div>
     </div>
-    <div class="field"><label>Commentaire / Scan</label><textarea id="s_com" rows="2" placeholder="Le scan apparaîtra ici..."></textarea></div>
+    <div class="field"><label>Commentaire</label><textarea id="s_com" rows="2"></textarea></div>
     <button class="btn btn-s" onclick="sauver('Sortie')">VALIDER SORTIE</button>
 </div>
 
@@ -88,10 +83,9 @@
 
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzabjx_F11Tp38XwKWr1FzDtMmNk0UrfGT7xHtEdW5I5_56NwGHVtni3Nph6HrsMsp9dg/exec"; 
+    
     const sites = ["AD PLATING", "AFIPH", "ALIZON", "CARTONNAGE DU DAUPHINÉ", "CINRA", "CMAI", "COQUAND", "CRD", "DJ MECA", "DKER", "DPF DS SMITH", "DSV ALES", "DSV HONGRIE", "EASI", "EDM", "ELS MOIRANS", "ELS VOREPPE", "ERIKS", "ESAT SAINTE AGNÈS", "FONTAINE INSERTION", "FRANCIA", "GINDRE", "GLD", "INTENCITY", "KPLAST", "MACON", "MASTERTECH", "MINIFABER", "MPG", "NEWLOG", "OPENLAB", "SDE SAINT GEOIRS", "SE ALPES 1/2/3", "SE ALPES 10/11", "SEA", "SFCME", "SIPALEX", "SMART ECOFIT", "XDOCK38", "XDOCK69", "38EQI", "38TEC", "38X MONTBONNOT"].sort();
     const navettes = ["AFIPH", "C10", "C12", "C2", "C24", "C29", "C33", "C35", "C36", "C39", "C42", "C45", "C46", "C48", "C49", "DKER", "ESAT SAINTE AGNES", "XPO"].sort();
-
-    let html5QrCode;
 
     window.onload = function() {
         sites.forEach(s => document.getElementById('list_sites').innerHTML += `<option value="${s}">`);
@@ -108,41 +102,13 @@
         chargerDonnees();
     };
 
-    function toggleScanner() {
-        const readerDiv = document.getElementById('reader');
-        if (readerDiv.style.display === "none" || readerDiv.style.display === "") {
-            readerDiv.style.display = "block";
-            document.getElementById('btn-toggle-scan').innerText = "⏹ ARRÊTER LA CAMERA";
-            startScan();
-        } else { stopScan(); }
-    }
-
-    function startScan() {
-        html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
-            (decodedText) => {
-                document.getElementById('e_com').value = decodedText;
-                document.getElementById('s_com').value = decodedText;
-                alert("SCAN : " + decodedText);
-                stopScan();
-            }
-        ).catch(() => { stopScan(); });
-    }
-
-    function stopScan() {
-        if (html5QrCode && html5QrCode.isScanning) {
-            html5QrCode.stop().then(() => {
-                document.getElementById('reader').style.display = "none";
-                document.getElementById('btn-toggle-scan').innerText = "📷 OUVRIR LA CAMERA";
-            });
-        }
-    }
-
     async function sauver(type) {
         const p = type === 'Entrée' ? 'e' : 's';
+        const navInput = document.getElementById(p+'_navette');
         const data = {
-            type: type, date: document.getElementById(p+'_date').value,
-            nav: document.getElementById(p+'_navette').value.toUpperCase(),
+            type: type, 
+            date: document.getElementById(p+'_date').value,
+            nav: navInput.value.toUpperCase(),
             exp: document.getElementById(p+'_exp').value.toUpperCase(),
             dest: document.getElementById(p+'_dest').value.toUpperCase(),
             pal: document.getElementById(p+'_pal').value,
@@ -154,12 +120,8 @@
         document.getElementById('loader').style.display = "block";
         await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
         
-        // MODIFICATION ICI : On ne vide PLUS la navette ni les sites
+        // On NE réinitialise PAS la navette ici
         document.getElementById(p+'_com').value = "";
-        document.getElementById(p+'_pal').value = "";
-        document.getElementById(p+'_colis').value = "";
-        document.getElementById(p+'_m').value = "";
-        
         chargerDonnees();
         document.getElementById('loader').style.display = "none";
     }
@@ -173,7 +135,8 @@
             bE.innerHTML = ""; bS.innerHTML = "";
             data.forEach((l, index) => {
                 if(index === 0) return; 
-                const row = `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[3]}</td><td>${l[4]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="del-btn" onclick="supprimer('${l[9]}')">🗑</button></td></tr>`;
+                const ligneJS = JSON.stringify(l).replace(/"/g, '&quot;');
+                const row = `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[3]}</td><td>${l[4]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="edit-btn" onclick="editer(${ligneJS})">✎</button><button class="del-btn" onclick="supprimer('${l[9]}')">🗑</button></td></tr>`;
                 if(l[1] === 'Entrée') bE.innerHTML += row; else bS.innerHTML += row;
             });
         } catch (e) {}
@@ -186,6 +149,22 @@
         await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: "DELETE", id: id }) });
         chargerDonnees();
         document.getElementById('loader').style.display = "none";
+    }
+
+    function editer(ligne) {
+        if(!confirm("CORRIGER ? (La ligne sera supprimée pour être remplacée)")) return;
+        supprimer(ligne[9]);
+        const type = ligne[1];
+        const p = type === 'Entrée' ? 'e' : 's';
+        document.getElementById(type === 'Entrée' ? 'form-entree' : 'form-sortie').scrollIntoView({behavior: "smooth"});
+        document.getElementById(p+'_date').value = ligne[0];
+        document.getElementById(p+'_navette').value = ligne[2];
+        if(type === 'Entrée') { document.getElementById('e_exp').value = ligne[3]; document.getElementById('e_dest').value = ligne[4]; }
+        else { document.getElementById('s_dest').value = ligne[4]; document.getElementById('s_exp').value = ligne[3]; }
+        document.getElementById(p+'_pal').value = ligne[5];
+        document.getElementById(p+'_colis').value = ligne[6];
+        document.getElementById(p+'_m').value = ligne[7];
+        document.getElementById(p+'_com').value = ligne[8] || '';
     }
 </script>
 </body>
