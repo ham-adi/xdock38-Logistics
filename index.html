@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logistix Pro V9.9.1 - Historique Fix</title>
+    <title>Logistix Pro V9.9.2 - Correction Colonnes</title>
     <style>
         :root { --primary: #2c3e50; --entry: #27ae60; --exit: #2980b9; --delete: #e74c3c; --edit: #f39c12; }
         body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 10px; font-size: 13px; }
@@ -65,15 +65,15 @@
         <button onclick="chargerDonnees()">Actualiser ↻</button>
     </div>
     <div class="histo-container">
-        <h4 style="color:var(--entry); margin:5px 0;">ENTRÉES (Origine -> Moi)</h4>
+        <h4 style="color:var(--entry); margin:5px 0;">ENTRÉES</h4>
         <table>
-            <thead><tr><th>Date</th><th>Navette</th><th>Expéditeur</th><th>Destinataire</th><th>Pal.</th><th>Col.</th><th>M.</th><th>Com.</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Date</th><th>Navette</th><th>Exp.</th><th>Dest.</th><th>Pal.</th><th>Col.</th><th>M.</th><th>Com.</th><th>Actions</th></tr></thead>
             <tbody id="bEntree"></tbody>
         </table>
         
-        <h4 style="color:var(--exit); margin:15px 0 5px 0;">SORTIES (Moi -> Cible)</h4>
+        <h4 style="color:var(--exit); margin:15px 0 5px 0;">SORTIES</h4>
         <table>
-            <thead><tr><th>Date</th><th>Navette</th><th>Expéditeur</th><th>Destinataire</th><th>Pal.</th><th>Col.</th><th>M.</th><th>Com.</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Date</th><th>Navette</th><th>Dest.</th><th>Exp.</th><th>Pal.</th><th>Col.</th><th>M.</th><th>Com.</th><th>Actions</th></tr></thead>
             <tbody id="bSortie"></tbody>
         </table>
     </div>
@@ -134,10 +134,14 @@
             data.forEach((l, index) => {
                 if(index === 0) return; 
                 const ligneJS = JSON.stringify(l).replace(/"/g, '&quot;');
-                // Structure : Date(0), Type(1), Nav(2), Exp(3), Dest(4), Pal(5), Col(6), Met(7), Com(8), ID(9)
-                const rowHtml = `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[3]}</td><td>${l[4]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="edit-btn" onclick="editer(${ligneJS})">✎</button><button class="del-btn" onclick="supprimer('${l[9]}')">🗑</button></td></tr>`;
                 
-                if(l[1] === 'Entrée') bE.innerHTML += rowHtml; else bS.innerHTML += rowHtml;
+                if(l[1] === 'Entrée') {
+                    // ENTRÉE : Date(0), Nav(2), Exp(3), Dest(4), Pal(5), Col(6), Met(7), Com(8)
+                    bE.innerHTML += `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[3]}</td><td>${l[4]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="edit-btn" onclick="editer(${ligneJS})">✎</button><button class="del-btn" onclick="supprimer('${l[9]}')">🗑</button></td></tr>`;
+                } else {
+                    // SORTIE : Date(0), Nav(2), Dest(4), Exp(3)... J'ai inversé 4 et 3 pour coller à tes titres Dest. et Exp.
+                    bS.innerHTML += `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[4]}</td><td>${l[3]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="edit-btn" onclick="editer(${ligneJS})">✎</button><button class="del-btn" onclick="supprimer('${l[9]}')">🗑</button></td></tr>`;
+                }
             });
         } catch (e) {}
         document.getElementById('loader').style.display = "none";
