@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logistix Pro Sync - Version Stable</title>
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2343/2343894.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <title>Logistix Pro V9.5 - Scanner</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     
     <style>
         :root { --primary: #2c3e50; --entry: #27ae60; --exit: #2980b9; --delete: #e74c3c; }
@@ -19,6 +17,8 @@
         .btn { width: 100%; padding: 14px; border: none; border-radius: 6px; color: white; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top:5px;}
         .btn-e { background: var(--entry); }
         .btn-s { background: var(--exit); }
+        .btn-scan { background: #34495e; margin-bottom: 10px; font-size: 0.8rem; padding: 10px; }
+        #reader { width: 100%; border-radius: 10px; overflow: hidden; display: none; margin-bottom: 10px; }
         .sync-status { text-align: center; font-size: 0.7rem; color: #e67e22; height: 15px; margin-bottom: 5px; font-weight: bold; }
         .histo-container { overflow-x: auto; max-height: 400px; }
         table { width: 100%; border-collapse: collapse; background: white; font-size: 0.75rem; min-width: 800px; }
@@ -33,6 +33,9 @@
 
 <div id="loader" class="sync-status" style="display:none;">SYNCHRONISATION...</div>
 
+<div id="reader"></div>
+<button class="btn btn-scan" id="btn-toggle-scan" onclick="toggleScanner()">📷 ACTIVER LE SCANNER</button>
+
 <div class="card" id="form-entree" style="border-top: 6px solid var(--entry);">
     <h2 style="color: var(--entry);">📥 Entrée</h2>
     <div class="field"><label>Date</label><input type="date" id="e_date"></div>
@@ -44,7 +47,7 @@
         <div style="flex:1"><label>Colis</label><select id="e_colis"></select></div>
         <div style="flex:1"><label>Métrage</label><select id="e_m"></select></div>
     </div>
-    <div class="field"><label>Commentaire</label><textarea id="e_com" rows="2"></textarea></div>
+    <div class="field"><label>Commentaire / Code barre</label><textarea id="e_com" rows="2" placeholder="Scannez ou écrivez ici..."></textarea></div>
     <button class="btn btn-e" onclick="sauver('Entrée')">VALIDER ENTRÉE</button>
 </div>
 
@@ -59,24 +62,21 @@
         <div style="flex:1"><label>Colis</label><select id="s_colis"></select></div>
         <div style="flex:1"><label>Métrage</label><select id="s_m"></select></div>
     </div>
-    <div class="field"><label>Commentaire</label><textarea id="s_com" rows="2"></textarea></div>
+    <div class="field"><label>Commentaire / Code barre</label><textarea id="s_com" rows="2" placeholder="Scannez ou écrivez ici..."></textarea></div>
     <button class="btn btn-s" onclick="sauver('Sortie')">VALIDER SORTIE</button>
 </div>
 
 <div class="card">
-    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom:10px;">
-        <h3 style="margin:0; font-size:0.9rem;">FLUX PARTAGÉ (HISTORIQUE)</h3>
-        <button onclick="chargerDonnees()">Actualiser ↻</button>
-    </div>
+    <h3 style="margin:0 0 10px 0; font-size:0.9rem;">HISTORIQUE COMPLET</h3>
     <div class="histo-container">
         <h4 style="color:var(--entry); margin:5px 0;">ENTRÉES</h4>
-        <table id="tEntree">
-            <thead><tr><th>Date</th><th>Navette</th><th>Expéditeur</th><th>Destinataire</th><th>Pal.</th><th>Col.</th><th>M.</th><th>Com.</th><th>Actions</th></tr></thead>
+        <table>
+            <thead><tr><th>Date</th><th>Navette</th><th>Exp.</th><th>Dest.</th><th>Pal.</th><th>Col.</th><th>M.</th><th>Com.</th><th>Actions</th></tr></thead>
             <tbody id="bEntree"></tbody>
         </table>
         <h4 style="color:var(--exit); margin:15px 0 5px 0;">SORTIES</h4>
-        <table id="tSortie">
-            <thead><tr><th>Date</th><th>Navette</th><th>Destinataire</th><th>Expéditeur</th><th>Pal.</th><th>Col.</th><th>M.</th><th>Com.</th><th>Actions</th></tr></thead>
+        <table>
+            <thead><tr><th>Date</th><th>Navette</th><th>Dest.</th><th>Exp.</th><th>Pal.</th><th>Col.</th><th>M.</th><th>Com.</th><th>Actions</th></tr></thead>
             <tbody id="bSortie"></tbody>
         </table>
     </div>
@@ -87,9 +87,10 @@
 
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzabjx_F11Tp38XwKWr1FzDtMmNk0UrfGT7xHtEdW5I5_56NwGHVtni3Nph6HrsMsp9dg/exec"; 
-
     const sites = ["AD PLATING", "AFIPH", "ALIZON", "CARTONNAGE DU DAUPHINÉ", "CINRA", "CMAI", "COQUAND", "CRD", "DJ MECA", "DKER", "DPF DS SMITH", "DSV ALES", "DSV HONGRIE", "EASI", "EDM", "ELS MOIRANS", "ELS VOREPPE", "ERIKS", "ESAT SAINTE AGNÈS", "FONTAINE INSERTION", "FRANCIA", "GINDRE", "GLD", "INTENCITY", "KPLAST", "MACON", "MASTERTECH", "MINIFABER", "MPG", "NEWLOG", "OPENLAB", "SDE SAINT GEOIRS", "SE ALPES 1/2/3", "SE ALPES 10/11", "SEA", "SFCME", "SIPALEX", "SMART ECOFIT", "XDOCK38", "XDOCK69", "38EQI", "38TEC", "38X MONTBONNOT"].sort();
     const navettes = ["AFIPH", "C10", "C12", "C2", "C24", "C29", "C33", "C35", "C36", "C39", "C42", "C45", "C46", "C48", "C49", "DKER", "ESAT SAINTE AGNES", "XPO"].sort();
+
+    let html5QrCode;
 
     window.onload = function() {
         sites.forEach(s => document.getElementById('list_sites').innerHTML += `<option value="${s}">`);
@@ -106,11 +107,47 @@
         chargerDonnees();
     };
 
+    // --- LOGIQUE SCANNER ---
+    function toggleScanner() {
+        const readerDiv = document.getElementById('reader');
+        if (readerDiv.style.display === "none" || readerDiv.style.display === "") {
+            readerDiv.style.display = "block";
+            document.getElementById('btn-toggle-scan').innerText = "⏹ ARRÊTER LE SCANNER";
+            startScan();
+        } else {
+            stopScan();
+        }
+    }
+
+    function startScan() {
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: { width: 250, height: 150 } },
+            (decodedText) => {
+                // On met le texte dans les deux zones de commentaire pour être sûr
+                document.getElementById('e_com').value = decodedText;
+                document.getElementById('s_com').value = decodedText;
+                stopScan();
+                alert("Code détecté : " + decodedText);
+            },
+            (errorMessage) => { /* On ignore les erreurs de recherche */ }
+        ).catch((err) => alert("Erreur caméra : " + err));
+    }
+
+    function stopScan() {
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => {
+                document.getElementById('reader').style.display = "none";
+                document.getElementById('btn-toggle-scan').innerText = "📷 ACTIVER LE SCANNER";
+            });
+        }
+    }
+
     async function sauver(type) {
         const p = type === 'Entrée' ? 'e' : 's';
         const data = {
-            type: type, 
-            date: document.getElementById(p+'_date').value,
+            type: type, date: document.getElementById(p+'_date').value,
             nav: document.getElementById(p+'_navette').value.toUpperCase(),
             exp: document.getElementById(p+'_exp').value.toUpperCase(),
             dest: document.getElementById(p+'_dest').value.toUpperCase(),
@@ -124,43 +161,6 @@
         await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
         document.getElementById(p+'_navette').value = "";
         document.getElementById(p+'_com').value = "";
-        document.getElementById(p+'_pal').selectedIndex = 0;
-        document.getElementById(p+'_colis').selectedIndex = 0;
-        document.getElementById(p+'_m').selectedIndex = 0;
-        chargerDonnees();
-        document.getElementById('loader').style.display = "none";
-    }
-
-    async function editer(ligne) {
-        if(!confirm("CORRECTION : La ligne sera supprimée pour être modifiée. Continuer ?")) return;
-        document.getElementById('loader').style.display = "block";
-        const data = { action: "DELETE", id: ligne[9] };
-        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
-        const type = ligne[1];
-        const p = type === 'Entrée' ? 'e' : 's';
-        document.getElementById(type === 'Entrée' ? 'form-entree' : 'form-sortie').scrollIntoView({behavior: "smooth"});
-        document.getElementById(p+'_date').value = ligne[0];
-        document.getElementById(p+'_navette').value = ligne[2];
-        if(type === 'Entrée') {
-            document.getElementById('e_exp').value = ligne[3];
-            document.getElementById('e_dest').value = ligne[4];
-        } else {
-            document.getElementById('s_dest').value = ligne[4]; 
-            document.getElementById('s_exp').value = ligne[3];  
-        }
-        document.getElementById(p+'_pal').value = ligne[5];
-        document.getElementById(p+'_colis').value = ligne[6];
-        document.getElementById(p+'_m').value = ligne[7];
-        document.getElementById(p+'_com').value = ligne[8] || '';
-        chargerDonnees();
-        document.getElementById('loader').style.display = "none";
-    }
-
-    async function supprimer(ligne) {
-        if(!confirm("SUPPRIMER DÉFINITIVEMENT CETTE LIGNE ?")) return;
-        document.getElementById('loader').style.display = "block";
-        const data = { action: "DELETE", id: ligne[9] };
-        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
         chargerDonnees();
         document.getElementById('loader').style.display = "none";
     }
@@ -170,17 +170,23 @@
         try {
             const res = await fetch(SCRIPT_URL);
             const data = await res.json();
-            const bE = document.getElementById('bEntree');
-            const bS = document.getElementById('bSortie');
+            const bE = document.getElementById('bEntree'); const bS = document.getElementById('bSortie');
             bE.innerHTML = ""; bS.innerHTML = "";
             data.forEach((l, index) => {
                 if(index === 0) return; 
                 const ligneJS = JSON.stringify(l).replace(/"/g, '&quot;');
-                const rowE = `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[3]}</td><td>${l[4]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="edit-btn" onclick="editer(${ligneJS})">✎</button><button class="del-btn" onclick="supprimer(${ligneJS})">🗑</button></td></tr>`;
-                const rowS = `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[4]}</td><td>${l[3]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="edit-btn" onclick="editer(${ligneJS})">✎</button><button class="del-btn" onclick="supprimer(${ligneJS})">🗑</button></td></tr>`;
-                if(l[1] === 'Entrée') bE.innerHTML += rowE; else bS.innerHTML += rowS;
+                const row = `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[3]}</td><td>${l[4]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="del-btn" onclick="supprimer('${l[9]}')">🗑</button></td></tr>`;
+                if(l[1] === 'Entrée') bE.innerHTML += row; else bS.innerHTML += row;
             });
-        } catch (e) { console.log("Chargement initial terminé."); }
+        } catch (e) {}
+        document.getElementById('loader').style.display = "none";
+    }
+
+    async function supprimer(id) {
+        if(!confirm("Supprimer ?")) return;
+        document.getElementById('loader').style.display = "block";
+        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: "DELETE", id: id }) });
+        chargerDonnees();
         document.getElementById('loader').style.display = "none";
     }
 </script>
