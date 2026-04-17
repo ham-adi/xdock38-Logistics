@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logistix Pro V9.6 - Scanner Fix</title>
+    <title>Logistix Pro V9.8 - Mémoire Navette</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
-    
     <style>
         :root { --primary: #2c3e50; --entry: #27ae60; --exit: #2980b9; --delete: #e74c3c; }
         body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 10px; font-size: 13px; }
@@ -25,7 +24,6 @@
         th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
         th { background: #f8f9fa; position: sticky; top: 0; }
         .action-btns { display: flex; gap: 5px; }
-        .edit-btn { background: #f39c12; color: white; border: none; padding: 8px; border-radius: 4px; font-weight: bold; cursor: pointer;}
         .del-btn { background: var(--delete); color: white; border: none; padding: 8px; border-radius: 4px; font-weight: bold; cursor: pointer;}
     </style>
 </head>
@@ -39,7 +37,7 @@
 <div class="card" id="form-entree" style="border-top: 6px solid var(--entry);">
     <h2 style="color: var(--entry);">📥 Entrée</h2>
     <div class="field"><label>Date</label><input type="date" id="e_date"></div>
-    <div class="field"><label>Navette</label><input list="list_navettes" id="e_navette"></div>
+    <div class="field"><label>Navette (Conservée)</label><input list="list_navettes" id="e_navette"></div>
     <div class="field"><label>Expéditeur (Origine)</label><input list="list_sites" id="e_exp"></div>
     <div class="field"><label>Destinataire (Final)</label><input list="list_sites" id="e_dest"></div>
     <div style="display:flex; gap:8px;">
@@ -54,7 +52,7 @@
 <div class="card" id="form-sortie" style="border-top: 6px solid var(--exit);">
     <h2 style="color: var(--exit);">📤 Sortie</h2>
     <div class="field"><label>Date</label><input type="date" id="s_date"></div>
-    <div class="field"><label>Navette</label><input list="list_navettes" id="s_navette"></div>
+    <div class="field"><label>Navette (Conservée)</label><input list="list_navettes" id="s_navette"></div>
     <div class="field"><label>Destinataire (Cible)</label><input list="list_sites" id="s_dest"></div>
     <div class="field"><label>Expéditeur (Origine)</label><input list="list_sites" id="s_exp"></div>
     <div style="display:flex; gap:8px;">
@@ -73,12 +71,12 @@
     </div>
     <div class="histo-container">
         <h4 style="color:var(--entry); margin:5px 0;">ENTRÉES</h4>
-        <table id="tEntree">
+        <table>
             <thead><tr><th>Date</th><th>Navette</th><th>Exp.</th><th>Dest.</th><th>Pal.</th><th>Col.</th><th>M.</th><th>Com.</th><th>Actions</th></tr></thead>
             <tbody id="bEntree"></tbody>
         </table>
         <h4 style="color:var(--exit); margin:15px 0 5px 0;">SORTIES</h4>
-        <table id="tSortie">
+        <table>
             <thead><tr><th>Date</th><th>Navette</th><th>Dest.</th><th>Exp.</th><th>Pal.</th><th>Col.</th><th>M.</th><th>Com.</th><th>Actions</th></tr></thead>
             <tbody id="bSortie"></tbody>
         </table>
@@ -116,29 +114,19 @@
             readerDiv.style.display = "block";
             document.getElementById('btn-toggle-scan').innerText = "⏹ ARRÊTER LA CAMERA";
             startScan();
-        } else {
-            stopScan();
-        }
+        } else { stopScan(); }
     }
 
     function startScan() {
         html5QrCode = new Html5Qrcode("reader");
-        const config = { fps: 10, qrbox: { width: 250, height: 150 } };
-        
-        html5QrCode.start(
-            { facingMode: "environment" }, 
-            config,
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
             (decodedText) => {
                 document.getElementById('e_com').value = decodedText;
                 document.getElementById('s_com').value = decodedText;
-                alert("CODE SCANNE : " + decodedText);
+                alert("SCAN : " + decodedText);
                 stopScan();
             }
-        ).catch((err) => {
-            alert("Erreur Caméra : Assurez-vous d'être en HTTPS et d'avoir autorisé la caméra.");
-            console.error(err);
-            stopScan();
-        });
+        ).catch(() => { stopScan(); });
     }
 
     function stopScan() {
@@ -147,9 +135,6 @@
                 document.getElementById('reader').style.display = "none";
                 document.getElementById('btn-toggle-scan').innerText = "📷 OUVRIR LA CAMERA";
             });
-        } else {
-            document.getElementById('reader').style.display = "none";
-            document.getElementById('btn-toggle-scan').innerText = "📷 OUVRIR LA CAMERA";
         }
     }
 
@@ -168,8 +153,13 @@
         if(!data.nav) return alert("Navette requise");
         document.getElementById('loader').style.display = "block";
         await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
-        document.getElementById(p+'_navette').value = "";
+        
+        // MODIFICATION ICI : On ne vide PLUS la navette ni les sites
         document.getElementById(p+'_com').value = "";
+        document.getElementById(p+'_pal').value = "";
+        document.getElementById(p+'_colis').value = "";
+        document.getElementById(p+'_m').value = "";
+        
         chargerDonnees();
         document.getElementById('loader').style.display = "none";
     }
@@ -183,7 +173,6 @@
             bE.innerHTML = ""; bS.innerHTML = "";
             data.forEach((l, index) => {
                 if(index === 0) return; 
-                const ligneJS = JSON.stringify(l).replace(/"/g, '&quot;');
                 const row = `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[3]}</td><td>${l[4]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="del-btn" onclick="supprimer('${l[9]}')">🗑</button></td></tr>`;
                 if(l[1] === 'Entrée') bE.innerHTML += row; else bS.innerHTML += row;
             });
