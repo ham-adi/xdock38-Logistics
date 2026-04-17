@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logistix Pro V9.8 - Mémoire Navette</title>
+    <title>Logistix Pro V9.9 - Correctif Sortie</title>
     <style>
         :root { --primary: #2c3e50; --entry: #27ae60; --exit: #2980b9; --delete: #e74c3c; --edit: #f39c12; }
         body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 10px; font-size: 13px; }
@@ -34,7 +34,7 @@
     <div class="field"><label>Date</label><input type="date" id="e_date"></div>
     <div class="field"><label>Navette</label><input list="list_navettes" id="e_navette"></div>
     <div class="field"><label>Expéditeur (Origine)</label><input list="list_sites" id="e_exp"></div>
-    <div class="field"><label>Destinataire (Final)</label><input list="list_sites" id="e_dest"></div>
+    <div class="field"><label>Destinataire (Moi/Interne)</label><input list="list_sites" id="e_dest"></div>
     <div style="display:flex; gap:8px;">
         <div style="flex:1"><label>Palettes</label><select id="e_pal"></select></div>
         <div style="flex:1"><label>Colis</label><select id="e_colis"></select></div>
@@ -48,8 +48,8 @@
     <h2 style="color: var(--exit);">📤 Sortie</h2>
     <div class="field"><label>Date</label><input type="date" id="s_date"></div>
     <div class="field"><label>Navette</label><input list="list_navettes" id="s_navette"></div>
+    <div class="field"><label>Expéditeur (Moi/Interne)</label><input list="list_sites" id="s_exp"></div>
     <div class="field"><label>Destinataire (Cible)</label><input list="list_sites" id="s_dest"></div>
-    <div class="field"><label>Expéditeur (Origine)</label><input list="list_sites" id="s_exp"></div>
     <div style="display:flex; gap:8px;">
         <div style="flex:1"><label>Palettes</label><select id="s_pal"></select></div>
         <div style="flex:1"><label>Colis</label><select id="s_colis"></select></div>
@@ -72,7 +72,7 @@
         </table>
         <h4 style="color:var(--exit); margin:15px 0 5px 0;">SORTIES</h4>
         <table>
-            <thead><tr><th>Date</th><th>Navette</th><th>Dest.</th><th>Exp.</th><th>Pal.</th><th>Col.</th><th>M.</th><th>Com.</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Date</th><th>Navette</th><th>Exp.</th><th>Dest.</th><th>Pal.</th><th>Col.</th><th>M.</th><th>Com.</th><th>Actions</th></tr></thead>
             <tbody id="bSortie"></tbody>
         </table>
     </div>
@@ -104,11 +104,10 @@
 
     async function sauver(type) {
         const p = type === 'Entrée' ? 'e' : 's';
-        const navInput = document.getElementById(p+'_navette');
         const data = {
             type: type, 
             date: document.getElementById(p+'_date').value,
-            nav: navInput.value.toUpperCase(),
+            nav: document.getElementById(p+'_navette').value.toUpperCase(),
             exp: document.getElementById(p+'_exp').value.toUpperCase(),
             dest: document.getElementById(p+'_dest').value.toUpperCase(),
             pal: document.getElementById(p+'_pal').value,
@@ -120,7 +119,7 @@
         document.getElementById('loader').style.display = "block";
         await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
         
-        // On NE réinitialise PAS la navette ici
+        // On garde la navette en mémoire, on vide juste le reste
         document.getElementById(p+'_com').value = "";
         chargerDonnees();
         document.getElementById('loader').style.display = "none";
@@ -136,6 +135,7 @@
             data.forEach((l, index) => {
                 if(index === 0) return; 
                 const ligneJS = JSON.stringify(l).replace(/"/g, '&quot;');
+                // Structure table: Date(0), Type(1), Nav(2), Exp(3), Dest(4), Pal(5), Col(6), Met(7), Com(8), ID(9)
                 const row = `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[3]}</td><td>${l[4]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="edit-btn" onclick="editer(${ligneJS})">✎</button><button class="del-btn" onclick="supprimer('${l[9]}')">🗑</button></td></tr>`;
                 if(l[1] === 'Entrée') bE.innerHTML += row; else bS.innerHTML += row;
             });
@@ -159,8 +159,8 @@
         document.getElementById(type === 'Entrée' ? 'form-entree' : 'form-sortie').scrollIntoView({behavior: "smooth"});
         document.getElementById(p+'_date').value = ligne[0];
         document.getElementById(p+'_navette').value = ligne[2];
-        if(type === 'Entrée') { document.getElementById('e_exp').value = ligne[3]; document.getElementById('e_dest').value = ligne[4]; }
-        else { document.getElementById('s_dest').value = ligne[4]; document.getElementById('s_exp').value = ligne[3]; }
+        document.getElementById(p+'_exp').value = ligne[3];
+        document.getElementById(p+'_dest').value = ligne[4];
         document.getElementById(p+'_pal').value = ligne[5];
         document.getElementById(p+'_colis').value = ligne[6];
         document.getElementById(p+'_m').value = ligne[7];
