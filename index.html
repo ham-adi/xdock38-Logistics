@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logistix Pro V9.9.2 - Correction Colonnes</title>
+    <title>Logistix Pro V10.0 - Performance</title>
     <style>
         :root { --primary: #2c3e50; --entry: #27ae60; --exit: #2980b9; --delete: #e74c3c; --edit: #f39c12; }
         body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 10px; font-size: 13px; }
@@ -23,12 +23,14 @@
         .action-btns { display: flex; gap: 5px; }
         .edit-btn { background: var(--edit); color: white; border: none; padding: 8px; border-radius: 4px; font-weight: bold; cursor: pointer;}
         .del-btn { background: var(--delete); color: white; border: none; padding: 8px; border-radius: 4px; font-weight: bold; cursor: pointer;}
+        .info-filter { background: #ebf5fb; padding: 10px; border-radius: 5px; font-size: 0.8rem; color: #2980b9; margin-bottom: 10px; text-align: center; border: 1px solid #d6eaf8; }
     </style>
 </head>
 <body>
 
-<div id="loader" class="sync-status" style="display:none;">SYNCHRONISATION EN COURS...</div>
+<div id="loader" class="sync-status" style="display:none;">CHARGEMENT...</div>
 
+<!-- FORMULAIRE ENTRÉE -->
 <div class="card" id="form-entree" style="border-top: 6px solid var(--entry);">
     <h2 style="color: var(--entry);">📥 Entrée</h2>
     <div class="field"><label>Date</label><input type="date" id="e_date"></div>
@@ -44,6 +46,7 @@
     <button class="btn btn-e" onclick="sauver('Entrée')">VALIDER ENTRÉE</button>
 </div>
 
+<!-- FORMULAIRE SORTIE -->
 <div class="card" id="form-sortie" style="border-top: 6px solid var(--exit);">
     <h2 style="color: var(--exit);">📤 Sortie</h2>
     <div class="field"><label>Date</label><input type="date" id="s_date"></div>
@@ -59,11 +62,13 @@
     <button class="btn btn-s" onclick="sauver('Sortie')">VALIDER SORTIE</button>
 </div>
 
+<!-- HISTORIQUE FILTRÉ -->
 <div class="card">
     <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom:10px;">
-        <h3 style="margin:0; font-size:0.9rem;">HISTORIQUE COMPLET</h3>
-        <button onclick="chargerDonnees()">Actualiser ↻</button>
+        <h3 style="margin:0; font-size:0.9rem;">FLUX RÉCENTS (48H)</h3>
+        <button onclick="chargerDonnees()" style="padding: 5px 10px; cursor:pointer;">↻</button>
     </div>
+    <div class="info-filter">Affichage limité aux dernières 48h pour plus de fluidité.</div>
     <div class="histo-container">
         <h4 style="color:var(--entry); margin:5px 0;">ENTRÉES</h4>
         <table>
@@ -131,19 +136,33 @@
             const data = await res.json();
             const bE = document.getElementById('bEntree'); const bS = document.getElementById('bSortie');
             bE.innerHTML = ""; bS.innerHTML = "";
+            
+            // Calculer la date limite (aujourd'hui - 2 jours)
+            const limite = new Date();
+            limite.setDate(limite.getDate() - 2);
+            limite.setHours(0, 0, 0, 0);
+
             data.forEach((l, index) => {
                 if(index === 0) return; 
-                const ligneJS = JSON.stringify(l).replace(/"/g, '&quot;');
                 
-                if(l[1] === 'Entrée') {
-                    // ENTRÉE : Date(0), Nav(2), Exp(3), Dest(4), Pal(5), Col(6), Met(7), Com(8)
-                    bE.innerHTML += `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[3]}</td><td>${l[4]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="edit-btn" onclick="editer(${ligneJS})">✎</button><button class="del-btn" onclick="supprimer('${l[9]}')">🗑</button></td></tr>`;
-                } else {
-                    // SORTIE : Date(0), Nav(2), Dest(4), Exp(3)... J'ai inversé 4 et 3 pour coller à tes titres Dest. et Exp.
-                    bS.innerHTML += `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[4]}</td><td>${l[3]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="edit-btn" onclick="editer(${ligneJS})">✎</button><button class="del-btn" onclick="supprimer('${l[9]}')">🗑</button></td></tr>`;
+                // On transforme la date du Sheets en objet Date JS pour comparer
+                const dateLigne = new Date(l[0]);
+                
+                // Si la date est valide et qu'elle est plus récente que la limite
+                if (dateLigne >= limite || isNaN(dateLigne)) {
+                    const ligneJS = JSON.stringify(l).replace(/"/g, '&quot;');
+                    
+                    if(l[1] === 'Entrée') {
+                        bE.innerHTML += `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[3]}</td><td>${l[4]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="edit-btn" onclick="editer(${ligneJS})">✎</button><button class="del-btn" onclick="supprimer('${l[9]}')">🗑</button></td></tr>`;
+                    } else {
+                        // Inversion l[4] Dest et l[3] Exp pour le tableau Sortie selon ton besoin précédent
+                        bS.innerHTML += `<tr><td>${l[0]}</td><td>${l[2]}</td><td>${l[4]}</td><td>${l[3]}</td><td>${l[5]}</td><td>${l[6]}</td><td>${l[7]}</td><td>${l[8] || ''}</td><td class="action-btns"><button class="edit-btn" onclick="editer(${ligneJS})">✎</button><button class="del-btn" onclick="supprimer('${l[9]}')">🗑</button></td></tr>`;
+                    }
                 }
             });
-        } catch (e) {}
+            if(bE.innerHTML === "") bE.innerHTML = "<tr><td colspan='9' style='text-align:center;'>Aucune entrée récente</td></tr>";
+            if(bS.innerHTML === "") bS.innerHTML = "<tr><td colspan='9' style='text-align:center;'>Aucune sortie récente</td></tr>";
+        } catch (e) { console.error("Erreur chargement"); }
         document.getElementById('loader').style.display = "none";
     }
 
@@ -161,7 +180,7 @@
         const type = ligne[1];
         const p = type === 'Entrée' ? 'e' : 's';
         document.getElementById(type === 'Entrée' ? 'form-entree' : 'form-sortie').scrollIntoView({behavior: "smooth"});
-        document.getElementById(p+'_date').value = ligne[0];
+        document.getElementById(p+'_date').value = ligne[0].split('T')[0];
         document.getElementById(p+'_navette').value = ligne[2];
         document.getElementById(p+'_exp').value = ligne[3];
         document.getElementById(p+'_dest').value = ligne[4];
